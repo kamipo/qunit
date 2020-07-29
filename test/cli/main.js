@@ -1,75 +1,79 @@
 "use strict";
 
 const expectedOutput = require( "./fixtures/expected/tap-outputs" );
-const execute = require( "./helpers/execute" );
+const { execute, prettyPrintCommand } = require( "./helpers/execute" );
 const semver = require( "semver" );
+
+function getExpected( command ) {
+	return expectedOutput[ prettyPrintCommand( command ) ];
+}
 
 QUnit.module( "CLI Main", () => {
 	QUnit.test( "defaults to running tests in 'test' directory", async assert => {
-		const command = "qunit";
+		const command = [ "qunit" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "errors if no test files are found to run", async assert => {
 		try {
-			await execute( "qunit does-not-exist.js" );
+			await execute( [ "qunit", "does-not-exist.js" ] );
 		} catch ( e ) {
 			assert.equal( e.stderr.indexOf( "No files were found matching" ), 0 );
 		}
 	} );
 
 	QUnit.test( "accepts globs for test files to run", async assert => {
-		const command = "qunit 'glob/**/*-test.js'";
+		const command = [ "qunit", "glob/**/*-test.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "runs a single JS file", async assert => {
-		const command = "qunit single.js";
+		const command = [ "qunit", "single.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "runs multiple JS files", async assert => {
-		const command = "qunit single.js double.js";
+		const command = [ "qunit", "single.js", "double.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "runs all JS files in a directory matching an arg", async assert => {
-		const command = "qunit test";
+		const command = [ "qunit", "test" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "runs multiple types of file paths", async assert => {
-		const command = "qunit test single.js 'glob/**/*-test.js'";
+		const command = [ "qunit", "test", "single.js", "glob/**/*-test.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "logs test files that fail to load properly", async assert => {
 		try {
-			await execute( "qunit syntax-error/test.js" );
+			await execute( [ "qunit", "syntax-error/test.js" ] );
 		} catch ( e ) {
 			assert.notEqual( e.stdout.indexOf( "not ok 1 syntax-error/test.js > Failed to load the test file with error:" ), -1 );
 			assert.notEqual( e.stdout.indexOf( "ReferenceError: varIsNotDefined is not defined" ), -1 );
@@ -78,47 +82,47 @@ QUnit.module( "CLI Main", () => {
 	} );
 
 	QUnit.test( "report assert.throws() failures properly", async assert => {
-		const command = "qunit fail/throws-match.js";
+		const command = [ "qunit", "fail/throws-match.js" ];
 		try {
 			await execute( command );
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
 			assert.equal( e.stderr, "" );
-			assert.equal( e.stdout, expectedOutput[ command ] );
+			assert.equal( e.stdout, getExpected( command ) );
 		}
 	} );
 
 	QUnit.test( "exit code is 1 when failing tests are present", async assert => {
 		try {
-			await execute( "qunit fail/failure.js" );
+			await execute( [ "qunit", "fail/failure.js" ] );
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
 		}
 	} );
 
 	QUnit.test( "exit code is 1 when no tests are run", async assert => {
-		const command = "qunit no-tests";
+		const command = [ "qunit", "no-tests" ];
 		try {
 			await execute( command );
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
 			assert.equal( e.stderr, "" );
-			assert.equal( e.stdout, expectedOutput[ command ] );
+			assert.equal( e.stdout, getExpected( command ) );
 		}
 	} );
 
 	QUnit.test( "exit code is 1 when no tests exit before done", async assert => {
-		const command = "qunit hanging-test";
+		const command = [ "qunit", "hanging-test" ];
 		try {
 			await execute( command );
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
-			assert.equal( e.stderr, expectedOutput[ command ] );
+			assert.equal( e.stderr, getExpected( command ) );
 		}
 	} );
 
 	QUnit.test( "unhandled rejections fail tests", async assert => {
-		const command = "qunit unhandled-rejection.js";
+		const command = [ "qunit", "unhandled-rejection.js" ];
 
 		try {
 			const result = await execute( command );
@@ -129,12 +133,12 @@ QUnit.module( "CLI Main", () => {
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
 			assert.equal( e.stderr, "" );
-			assert.equal( e.stdout, expectedOutput[ command ] );
+			assert.equal( e.stdout, getExpected( command ) );
 		}
 	} );
 
 	QUnit.test( "hard errors in test using `assert.async` are caught and reported", async assert => {
-		const command = "qunit hard-error-in-test-with-no-async-handler.js";
+		const command = [ "qunit", "hard-error-in-test-with-no-async-handler.js" ];
 
 		try {
 			const result = await execute( command );
@@ -151,7 +155,7 @@ QUnit.module( "CLI Main", () => {
 	} );
 
 	QUnit.test( "hard errors in hook are caught and reported", async assert => {
-		const command = "qunit hard-error-in-hook.js";
+		const command = [ "qunit", "hard-error-in-hook.js" ];
 
 		try {
 			const result = await execute( command );
@@ -169,7 +173,7 @@ QUnit.module( "CLI Main", () => {
 
 	if ( semver.gte( process.versions.node, "12.0.0" ) ) {
 		QUnit.test( "run ESM test suite with import statement", async assert => {
-			const command = "qunit ../../es2018/esm.mjs";
+			const command = [ "qunit", "../../es2018/esm.mjs" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
@@ -180,7 +184,7 @@ QUnit.module( "CLI Main", () => {
 			const stderr = semver.gte( process.versions.node, "14.0.0" ) ? execution.stderr : "";
 			assert.equal( stderr, "" );
 
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 	}
 
@@ -188,98 +192,102 @@ QUnit.module( "CLI Main", () => {
 	if ( semver.gte( process.versions.node, "14.0.0" ) ) {
 
 		QUnit.test( "normal trace with native source map", async assert => {
-			const command = "qunit sourcemap/source.js";
+			const command = [ "qunit", "sourcemap/source.js" ];
 			try {
 				await execute( command );
 			} catch ( e ) {
 				assert.equal( e.code, 1 );
 				assert.equal( e.stderr, "" );
-				assert.equal( e.stdout, expectedOutput[ command ] );
+				assert.equal( e.stdout, getExpected( command ) );
 			}
 		} );
 
 		// skip if running in code coverage mode - that leads to conflicting maps-on-maps that invalidate this test
 		QUnit[ process.env.NYC_PROCESS_ID ? "skip" : "test" ](
 			"mapped trace with native source map", async function( assert ) {
-				const command = "NODE_OPTIONS='--enable-source-maps' qunit sourcemap/source.min.js";
+				const command = [ "qunit", "sourcemap/source.min.js" ];
 				try {
-					await execute( command );
+					await execute( command, {
+						env: {
+							NODE_OPTIONS: "--enable-source-maps"
+						}
+					} );
 				} catch ( e ) {
 					assert.equal( e.code, 1 );
 					assert.equal( e.stderr, "" );
-					assert.equal( e.stdout, expectedOutput[ command ] );
+					assert.equal( e.stdout, getExpected( command ) );
 				}
 			} );
 	}
 
 	QUnit.test( "timeouts correctly recover", async assert => {
-		const command = "qunit timeout";
+		const command = [ "qunit", "timeout" ];
 		try {
 			await execute( command );
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
 			assert.equal( e.stderr, "" );
-			assert.equal( e.stdout, expectedOutput[ command ] );
+			assert.equal( e.stdout, getExpected( command ) );
 		}
 	} );
 
 	QUnit.test( "allows running zero-assertion tests", async assert => {
-		const command = "qunit zero-assertions.js";
+		const command = [ "qunit", "zero-assertions.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	// https://nodejs.org/docs/v14.0.0/api/v8.html#v8_v8_getheapsnapshot
 	// Created in Node 11.x, but starts working the way we need from Node 14.
 	if ( semver.gte( process.versions.node, "14.0.0" ) ) {
 		QUnit.test( "callbacks and hooks from modules are properly released for garbage collection", async assert => {
-			const command = "node --expose-gc ../../../bin/qunit.js memory-leak/*.js";
+			const command = [ "node", "--expose-gc", "../../../bin/qunit.js", "memory-leak/*.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 	}
 
 	QUnit.module( "filter", () => {
 		QUnit.test( "can properly filter tests", async assert => {
-			const command = "qunit --filter 'single' test single.js 'glob/**/*-test.js'";
-			const equivalentCommand = "qunit single.js";
+			const command = [ "qunit", "--filter", "single", "test", "single.js", "glob/**/*-test.js" ];
+			const equivalentCommand = [ "qunit", "single.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ equivalentCommand ] );
+			assert.equal( execution.stdout, getExpected( equivalentCommand ) );
 		} );
 
 		QUnit.test( "exit code is 1 when no tests match filter", async assert => {
-			const command = "qunit qunit --filter 'no matches' test";
+			const command = [ "qunit", "--filter", "no matches", "test" ];
 			try {
 				await execute( command );
 			} catch ( e ) {
 				assert.equal( e.code, 1 );
 				assert.equal( e.stderr, "" );
-				assert.equal( e.stdout, expectedOutput[ command ] );
+				assert.equal( e.stdout, getExpected( command ) );
 			}
 		} );
 	} );
 
 	QUnit.module( "require", () => {
 		QUnit.test( "can properly require dependencies and modules", async assert => {
-			const command = "qunit single.js --require require-dep --require './node_modules/require-dep/module.js'";
+			const command = [ "qunit", "single.js", "--require", "require-dep", "--require", "./node_modules/require-dep/module.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 
 		QUnit.test( "displays helpful error when failing to require a file", async assert => {
-			const command = "qunit single.js --require 'does-not-exist-at-all'";
+			const command = [ "qunit", "single.js", "--require", "does-not-exist-at-all" ];
 			try {
 				await execute( command );
 			} catch ( e ) {
@@ -292,19 +300,19 @@ QUnit.module( "CLI Main", () => {
 
 	QUnit.module( "seed", () => {
 		QUnit.test( "can properly seed tests", async assert => {
-			const command = "qunit --seed 's33d' test single.js 'glob/**/*-test.js'";
+			const command = [ "qunit", "--seed", "s33d", "test", "single.js", "glob/**/*-test.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 	} );
 
 	QUnit.module( "notrycatch", () => {
 		QUnit.test( "errors if notrycatch is used and a rejection occurs", async assert => {
 			try {
-				await execute( "qunit notrycatch/returns-rejection.js" );
+				await execute( [ "qunit", "notrycatch/returns-rejection.js" ] );
 			} catch ( e ) {
 				assert.pushResult( {
 
@@ -317,7 +325,7 @@ QUnit.module( "CLI Main", () => {
 
 		QUnit.test( "errors if notrycatch is used and a rejection occurs in a hook", async assert => {
 			try {
-				await execute( "qunit notrycatch/returns-rejection-in-hook.js" );
+				await execute( [ "qunit", "notrycatch/returns-rejection-in-hook.js" ] );
 			} catch ( e ) {
 				assert.pushResult( {
 
@@ -330,30 +338,30 @@ QUnit.module( "CLI Main", () => {
 	} );
 
 	QUnit.test( "config.module", async assert => {
-		const command = "qunit config-module.js";
+		const command = [ "qunit", "config-module.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.test( "config.testTimeout", async assert => {
-		const command = "qunit config-testTimeout.js";
+		const command = [ "qunit", "config-testTimeout.js" ];
 
 		try {
 			await execute( command );
 		} catch ( e ) {
 			assert.equal( e.code, 1 );
 			assert.equal( e.stderr, "" );
-			assert.equal( e.stdout, expectedOutput[ command ] );
+			assert.equal( e.stdout, getExpected( command ) );
 		}
 	} );
 
 	QUnit.module( "noglobals", () => {
 		QUnit.test( "add global variable", async assert => {
 			try {
-				await execute( "qunit noglobals/add-global.js" );
+				await execute( [ "qunit", "noglobals/add-global.js" ] );
 			} catch ( e ) {
 				assert.pushResult( {
 					result: e.stdout.indexOf( "message: Introduced global variable(s): dummyGlobal" ) > -1,
@@ -364,7 +372,7 @@ QUnit.module( "CLI Main", () => {
 
 		QUnit.test( "remove global variable", async assert => {
 			try {
-				await execute( "qunit noglobals/remove-global.js" );
+				await execute( [ "qunit", "noglobals/remove-global.js" ] );
 			} catch ( e ) {
 				assert.pushResult( {
 					result: e.stdout.indexOf( "message: Deleted global variable(s): dummyGlobal" ) > -1,
@@ -374,7 +382,7 @@ QUnit.module( "CLI Main", () => {
 		} );
 
 		QUnit.test( "forgive qunit DOM global variables", async assert => {
-			const execution = await execute( "qunit noglobals/ignored.js" );
+			const execution = await execute( [ "qunit", "noglobals/ignored.js" ] );
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
 		} );
@@ -383,7 +391,7 @@ QUnit.module( "CLI Main", () => {
 	QUnit.module( "semaphore", () => {
 		QUnit.test( "invalid value", async assert => {
 			try {
-				await execute( "qunit semaphore/nan.js" );
+				await execute( [ "qunit", "semaphore/nan.js" ] );
 			} catch ( e ) {
 				assert.pushResult( {
 					result: e.stdout.indexOf( "message: Invalid value on test.semaphore" ) > -1,
@@ -394,7 +402,7 @@ QUnit.module( "CLI Main", () => {
 
 		QUnit.test( "try to restart ", async assert => {
 			try {
-				await execute( "qunit semaphore/restart.js" );
+				await execute( [ "qunit", "semaphore/restart.js" ] );
 			} catch ( e ) {
 				assert.pushResult( {
 					result: e.stdout.indexOf( "message: \"Tried to restart test while already started (test's semaphore was 0 already)" ) > -1,
@@ -407,11 +415,11 @@ QUnit.module( "CLI Main", () => {
 	QUnit.module( "assert.async", () => {
 
 		QUnit.test( "assert.async callback after tests timeout", async assert => {
-			const command = "qunit done-after-timeout.js";
+			const command = [ "qunit", "done-after-timeout.js" ];
 			try {
 				await execute( command );
 			} catch ( e ) {
-				assert.equal( e.stdout, expectedOutput[ command ] );
+				assert.equal( e.stdout, getExpected( command ) );
 
 				// These are both undesirable, but at least confirm what the current state is.
 				// TDD should break these and update when possible.
@@ -422,7 +430,7 @@ QUnit.module( "CLI Main", () => {
 		} );
 
 		QUnit.test( "drooling calls across tests to assert.async callback", async assert => {
-			const command = "qunit drooling-done.js";
+			const command = [ "qunit", "drooling-done.js" ];
 			try {
 				await execute( command );
 			} catch ( e ) {
@@ -439,7 +447,7 @@ QUnit.module( "CLI Main", () => {
 		} );
 
 		QUnit.test( "too many calls to assert.async callback", async assert => {
-			const command = "qunit too-many-done-calls.js";
+			const command = [ "qunit", "too-many-done-calls.js" ];
 			try {
 				await execute( command );
 			} catch ( e ) {
@@ -460,47 +468,47 @@ QUnit.module( "CLI Main", () => {
 	QUnit.module( "only", () => {
 		QUnit.test( "test", async assert => {
 
-			const command = "qunit only/test.js";
+			const command = [ "qunit", "only/test.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 
 		QUnit.test( "nested modules", async assert => {
 
-			const command = "qunit only/module.js";
+			const command = [ "qunit", "only/module.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 
 		QUnit.test( "flat modules", async assert => {
 
-			const command = "qunit only/module-flat.js";
+			const command = [ "qunit", "only/module-flat.js" ];
 			const execution = await execute( command );
 
 			assert.equal( execution.code, 0 );
 			assert.equal( execution.stderr, "" );
-			assert.equal( execution.stdout, expectedOutput[ command ] );
+			assert.equal( execution.stdout, getExpected( command ) );
 		} );
 	} );
 
 	QUnit.test( "warns about incorrect hook usage", async assert => {
-		const command = "qunit incorrect-hooks-warning/test.js";
+		const command = [ "qunit", "incorrect-hooks-warning/test.js" ];
 		const execution = await execute( command );
 
 		assert.equal( execution.code, 0 );
 		assert.equal( execution.stderr, "The `beforeEach` hook was called inside the wrong module. Instead, use hooks provided by the callback to the containing module. This will become an error in QUnit 3.0.", "The warning shows" );
-		assert.equal( execution.stdout, expectedOutput[ command ] );
+		assert.equal( execution.stdout, getExpected( command ) );
 	} );
 
 	QUnit.module( "assert.expect failing conditions", () => {
 		QUnit.test( "mismatched expected assertions", async assert => {
-			const command = "qunit assert-expect/failing-expect.js";
+			const command = [ "qunit", "assert-expect/failing-expect.js" ];
 			try {
 				const result = await execute( command );
 				assert.pushResult( {
@@ -517,7 +525,7 @@ QUnit.module( "CLI Main", () => {
 		} );
 
 		QUnit.test( "no assertions run - use expect(0)", async assert => {
-			const command = "qunit assert-expect/no-assertions.js";
+			const command = [ "qunit", "assert-expect/no-assertions.js" ];
 			try {
 				const result = await execute( command );
 				assert.pushResult( {
@@ -534,7 +542,7 @@ QUnit.module( "CLI Main", () => {
 		} );
 
 		QUnit.test( "requireExpects", async assert => {
-			const command = "qunit assert-expect/require-expects.js";
+			const command = [ "qunit", "assert-expect/require-expects.js" ];
 			try {
 				const result = await execute( command );
 				assert.pushResult( {

@@ -28,12 +28,12 @@ jobs:
             node: 10.x
             script: npm test
 
-          # On Windows, cannot test CLI yet.
+          # On Windows, cannot test CLI yet (?)
           # https://github.com/qunitjs/qunit/issues/1359
           - name: "Windows: Node 14"
             os: windows-latest
             node: 14.x
-            script: npm run test:main
+            script: npm test
 
           - name: "macOS: Node 14"
             os: macos-latest

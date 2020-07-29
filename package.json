@@ -81,10 +81,10 @@
   "scripts": {
     "build": "rollup -c && grunt copy:src-css",
     "build:coverage": "rollup -c --environment BUILD_TARGET:coverage && grunt copy:src-css",
-    "test": "npm run build && grunt test && bin/qunit.js test/cli/*.js",
+    "test": "npm run build && grunt test && node bin/qunit.js test/cli/*.js",
     "test:lint": "grunt eslint",
     "test:main": "npm run build && grunt test",
-    "test:cli": "npm run build && bin/qunit.js test/cli/*.js",
+    "test:cli": "npm run build && node bin/qunit.js test/cli/*.js",
     "browserstack": "browserstack-runner -v",
     "authors": "grunt authors",
     "coverage": "npm run build:coverage && npm run coverage:_cli && npm run coverage:_main && nyc report",
