@@ -32,4 +32,4 @@ jobs:
         env:
           COVERALLS_REPO_TOKEN: "${{ secrets.COVERALLS_REPO_TOKEN }}"
           COVERALLS_GIT_BRANCH: "${{ github.ref }}"
-          NODE_COVERALLS_DEBUG: true
+          NODE_COVERALLS_DEBUG: "1"
